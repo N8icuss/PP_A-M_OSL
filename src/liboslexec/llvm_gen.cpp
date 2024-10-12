@@ -910,6 +910,16 @@ LLVMGEN(llvm_gen_mul)
     Symbol& A      = *rop.opargsym(op, 1);
     Symbol& B      = *rop.opargsym(op, 2);
 
+    if (A.typespec().is_closure() && B.typespec().is_closure()) {
+        OSL_DASSERT(A.typespec().is_closure() && B.typespec().is_closure());
+        llvm::Value* valargs[] = { rop.sg_void_ptr(), rop.llvm_load_value(A),
+                                   rop.llvm_load_value(B) };
+        llvm::Value* res       = rop.ll.call_function("osl_mul_closure_closure",
+                                                      valargs);
+        rop.llvm_store_value(res, Result, 0, NULL, 0);
+        return true;
+    }
+
     TypeDesc type                  = Result.typespec().simpletype();
     OSL_MAYBE_UNUSED bool is_float = !Result.typespec().is_closure_based()
                                      && Result.typespec().is_float_based();
@@ -917,32 +927,22 @@ LLVMGEN(llvm_gen_mul)
 
     // multiplication involving closures
     if (Result.typespec().is_closure()) {
-        if (A.typespec().is_closure() && B.typespec().is_closure()) {
-            OSL_DASSERT(A.typespec().is_closure() && B.typespec().is_closure());
-            llvm::Value* valargs[] = { rop.sg_void_ptr(),
-                                       rop.llvm_load_value(A),
-                                       rop.llvm_load_value(B) };
-            llvm::Value* res = rop.ll.call_function("osl_mul_closure_closure",
-                                                    valargs);
-            rop.llvm_store_value(res, Result, 0, NULL, 0);
+        llvm::Value* valargs[3];
+        valargs[0] = rop.sg_void_ptr();
+        bool tfloat;
+        if (A.typespec().is_closure()) {
+            tfloat     = B.typespec().is_float();
+            valargs[1] = rop.llvm_load_value(A);
+            valargs[2] = tfloat ? rop.llvm_load_value(B) : rop.llvm_void_ptr(B);
         } else {
-            llvm::Value* valargs[3];
-            valargs[0] = rop.sg_void_ptr();
-            bool tfloat;
-            if (A.typespec().is_closure()) {
-                tfloat     = B.typespec().is_float();
-                valargs[1] = rop.llvm_load_value(A);
-                valargs[2] = tfloat ? rop.llvm_load_value(B) : rop.llvm_void_ptr(B);
-            } else {
-                tfloat     = A.typespec().is_float();
-                valargs[1] = rop.llvm_load_value(B);
-                valargs[2] = tfloat ? rop.llvm_load_value(A) : rop.llvm_void_ptr(A);
-            }
-            llvm::Value* res
-                = tfloat ? rop.ll.call_function("osl_mul_closure_float", valargs)
-                         : rop.ll.call_function("osl_mul_closure_color", valargs);
-            rop.llvm_store_value(res, Result, 0, NULL, 0);
+            tfloat     = A.typespec().is_float();
+            valargs[1] = rop.llvm_load_value(B);
+            valargs[2] = tfloat ? rop.llvm_load_value(A) : rop.llvm_void_ptr(A);
         }
+        llvm::Value* res
+            = tfloat ? rop.ll.call_function("osl_mul_closure_float", valargs)
+                        : rop.ll.call_function("osl_mul_closure_color", valargs);
+        rop.llvm_store_value(res, Result, 0, NULL, 0);
         return true;
     }
 
