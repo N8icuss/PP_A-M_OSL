@@ -1429,36 +1429,54 @@ LLVMGEN(llvm_gen_mul)
 
     // multiplication involving closures
     if (Result.typespec().is_closure()) {
-        BatchedBackendLLVM::TempScope temp_scope(rop);
+        if (A.typespec().is_closure() && B.typespec().is_closure()) {
+            OSL_ASSERT(A.typespec().is_closure() && B.typespec().is_closure());
+            OSL_ASSERT(!A.is_uniform() && !B.is_uniform()
+                       && !result_is_uniform);
+            llvm::Value* valargs[]
+                = { rop.sg_void_ptr(), rop.llvm_void_ptr(Result),
+                    rop.llvm_void_ptr(A), rop.llvm_void_ptr(B),
+                    rop.ll.mask_as_int(rop.ll.current_mask()) };
 
-        llvm::Value* valargs[5];
-        valargs[0] = rop.sg_void_ptr();
-        valargs[1] = rop.llvm_void_ptr(Result);
-        bool tfloat;
-        bool aIsTheClosure = A.typespec().is_closure();
-        Symbol& inClosure  = aIsTheClosure ? A : B;
-        Symbol& t          = aIsTheClosure ? B : A;
+            FuncSpec add_closure("mul_closure_closure");
+            add_closure.mask();
+            // we directly write the result in add_closure_closure instead of using a
+            // store to write it back to result as in the single-point path
+            rop.ll.call_function(rop.build_name(add_closure), valargs);
 
-        valargs[2] = rop.llvm_void_ptr(inClosure);
-
-        tfloat = t.typespec().is_float();
-        if (t.is_uniform()) {
-            valargs[3] = rop.llvm_widen_value_into_temp(t, 0);
+            return true;
         } else {
-            valargs[3] = rop.llvm_void_ptr(t);
+            BatchedBackendLLVM::TempScope temp_scope(rop);
+
+            llvm::Value* valargs[5];
+            valargs[0] = rop.sg_void_ptr();
+            valargs[1] = rop.llvm_void_ptr(Result);
+            bool tfloat;
+            bool aIsTheClosure = A.typespec().is_closure();
+            Symbol& inClosure  = aIsTheClosure ? A : B;
+            Symbol& t          = aIsTheClosure ? B : A;
+
+            valargs[2] = rop.llvm_void_ptr(inClosure);
+
+            tfloat = t.typespec().is_float();
+            if (t.is_uniform()) {
+                valargs[3] = rop.llvm_widen_value_into_temp(t, 0);
+            } else {
+                valargs[3] = rop.llvm_void_ptr(t);
+            }
+
+            valargs[4] = rop.ll.mask_as_int(rop.ll.current_mask());
+
+            FuncSpec mul_closure(tfloat ? "mul_closure_float"
+                                        : "mul_closure_color");
+            mul_closure.mask();
+
+            // we directly write the result in add_closure_closure instead of using a
+            // store to write it back to result as in the single-point path
+            rop.ll.call_function(rop.build_name(mul_closure), valargs);
+
+            return true;
         }
-
-        valargs[4] = rop.ll.mask_as_int(rop.ll.current_mask());
-
-        FuncSpec mul_closure(tfloat ? "mul_closure_float"
-                                    : "mul_closure_color");
-        mul_closure.mask();
-
-        // we directly write the result in add_closure_closure instead of using a
-        // store to write it back to result as in the single-point path
-        rop.ll.call_function(rop.build_name(mul_closure), valargs);
-
-        return true;
     }
 
     // multiplication involving matrices
