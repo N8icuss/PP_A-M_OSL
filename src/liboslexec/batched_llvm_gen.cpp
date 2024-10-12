@@ -1438,7 +1438,7 @@ LLVMGEN(llvm_gen_mul)
                     rop.llvm_void_ptr(A), rop.llvm_void_ptr(B),
                     rop.ll.mask_as_int(rop.ll.current_mask()) };
 
-            FuncSpec add_closure("mul_closure_closure");
+            FuncSpec mul_closure("mul_closure_closure");
             add_closure.mask();
             // we directly write the result in add_closure_closure instead of using a
             // store to write it back to result as in the single-point path
