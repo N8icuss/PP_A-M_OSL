@@ -112,6 +112,7 @@
 
 #ifndef __CUDA_ARCH__
 DECL(osl_add_closure_closure, "CXCC")
+DECL(osl_mul_closure_closure, "CXCC")
 DECL(osl_mul_closure_float, "CXCf")
 DECL(osl_mul_closure_color, "CXCc")
 DECL(osl_allocate_closure_component, "CXii")

@@ -25,6 +25,17 @@ osl_add_closure_closure(ShaderGlobals* sg, const ClosureColor* a,
     return sg->context->closure_add_allot(a, b);
 }
 
+OSL_SHADEOP const ClosureColor*
+osl_mul_closure_closure(ShaderGlobals* sg, const ClosureColor* a,
+                        const ClosureColor* b)
+{
+    if (a == NULL)
+        return b;
+    if (b == NULL)
+        return a;
+    return sg->context->closure_add_allot(a, b);
+}
+
 
 OSL_SHADEOP const ClosureColor*
 osl_mul_closure_color(ShaderGlobals* sg, ClosureColor* a, const Color3* w)

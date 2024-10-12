@@ -205,6 +205,28 @@ osl_add_closure_closure(void* sg_, OSL::ClosureColor* a, OSL::ClosureColor* b)
     return ret;
 }
 
+__device__ void*
+osl_mul_closure_closure(void* sg_, OSL::ClosureColor* a, OSL::ClosureColor* b)
+{
+    ShaderGlobals* sg_ptr = (ShaderGlobals*)sg_;
+
+    if (a == NULL) {
+        return b;
+    }
+
+    if (b == NULL) {
+        return a;
+    }
+
+    // Fix up the alignment
+    void* ret = ((char*)sg_ptr->renderstate)
+                + alignment_offset_calc(sg_ptr->renderstate,
+                                        alignof(OSL::ClosureComponent));
+    sg_ptr->renderstate = closure_add_allot(ret, a, b);
+
+    return ret;
+}
+
 #define IS_STRING(type) (type.basetype == OSL::TypeDesc::STRING)
 #define IS_PTR(type)    (type.basetype == OSL::TypeDesc::PTR)
 #define IS_COLOR(type)  (type.vecsemantics == OSL::TypeDesc::COLOR)

@@ -920,18 +920,41 @@ LLVMGEN(llvm_gen_mul)
         llvm::Value* valargs[3];
         valargs[0] = rop.sg_void_ptr();
         bool tfloat;
+        bool wclosure;
         if (A.typespec().is_closure()) {
-            tfloat     = B.typespec().is_float();
-            valargs[1] = rop.llvm_load_value(A);
-            valargs[2] = tfloat ? rop.llvm_load_value(B) : rop.llvm_void_ptr(B);
+            if (B.typespec().is_closure()) {
+                wclosure = true;
+                OSL_DASSERT(A.typespec().is_closure() && B.typespec().is_closure());
+                llvm::Value* valargs[] = { rop.sg_void_ptr(), rop.llvm_load_value(A),
+                                           rop.llvm_load_value(B) };
+            } 
+            else {
+                tfloat     = B.typespec().is_float();
+                valargs[1] = rop.llvm_load_value(A);
+                valargs[2] = tfloat ? rop.llvm_load_value(B) : rop.llvm_void_ptr(B);
+            }
         } else {
-            tfloat     = A.typespec().is_float();
-            valargs[1] = rop.llvm_load_value(B);
-            valargs[2] = tfloat ? rop.llvm_load_value(A) : rop.llvm_void_ptr(A);
+            if (A.typespec().is_closure()) {
+                wclosure = true;
+                OSL_DASSERT(A.typespec().is_closure() && B.typespec().is_closure());
+                llvm::Value* valargs[] = { rop.sg_void_ptr(), rop.llvm_load_value(A),
+                                           rop.llvm_load_value(B) };
+            } 
+            else {
+                tfloat     = A.typespec().is_float();
+                valargs[1] = rop.llvm_load_value(B);
+                valargs[2] = tfloat ? rop.llvm_load_value(A) : rop.llvm_void_ptr(A);
+            }
         }
-        llvm::Value* res
-            = tfloat ? rop.ll.call_function("osl_mul_closure_float", valargs)
-                     : rop.ll.call_function("osl_mul_closure_color", valargs);
+        if (wclosure) {
+            llvm::Value* res = rop.ll.call_function("osl_mul_closure_closure",
+                                                    valargs);
+        }
+        else {
+            llvm::Value* res
+                = tfloat ? rop.ll.call_function("osl_mul_closure_float", valargs)
+                         : rop.ll.call_function("osl_mul_closure_color", valargs);
+        }
         rop.llvm_store_value(res, Result, 0, NULL, 0);
         return true;
     }
